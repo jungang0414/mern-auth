@@ -8,6 +8,10 @@ export const register = async (req, res) => {
 
     const { name, email, password } = req.body;
 
+    // 信件設定
+    const subject = "Welcome to MERN-AUTH";
+    const text = `Welcome, ${name}. have fun.`
+
     if (!name || !email || !password) {
         return res.json({ success: false, message: '註冊失敗，請填寫所有欄位' });
     }
@@ -40,7 +44,7 @@ export const register = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // cookie有效期限的設置
         });
 
-        await handleSendMail(email, name)
+        await handleSendMail(email, name, subject, text)
             .then(() => {
                 res.json({ success: true, message: '用戶註冊成功，已寄發註冊信' });
             })
