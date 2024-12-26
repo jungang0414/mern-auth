@@ -1,6 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import userModel from "../models/userModel.js";
+import handleSendMail from "../config/nodemailer.js";
 
 // 註冊
 export const register = async (req, res) => {
@@ -39,7 +40,13 @@ export const register = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // cookie有效期限的設置
         });
 
-        res.json({ success: true, message: '用戶註冊成功' });
+        await handleSendMail(email, name)
+            .then(() => {
+                res.json({ success: true, message: '用戶註冊成功，已寄發註冊信' });
+            })
+            .catch(() => {
+                res.json({ success: false, message: '寄送失敗' });
+            })
 
     } catch (error) {
         res.json({ success: false, message: error.message })
