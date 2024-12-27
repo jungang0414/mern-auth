@@ -46,14 +46,14 @@ export const register = async (req, res) => {
 
         await handleSendMail(email, name, subject, text)
             .then(() => {
-                res.json({ success: true, message: '用戶註冊成功，已寄發註冊信' });
+                return res.json({ success: true, message: '用戶註冊成功，已寄發註冊信' });
             })
             .catch(() => {
-                res.json({ success: false, message: '寄送失敗' });
+                return res.json({ success: false, message: '寄送失敗' });
             })
 
     } catch (error) {
-        res.json({ success: false, message: error.message })
+        return res.json({ success: false, message: error.message })
     }
 }
 
@@ -97,7 +97,7 @@ export const login = async (req, res) => {
             maxAge: 7 * 24 * 60 * 60 * 1000 // cookie有效期限的設置
         });
 
-        res.json({ success: true, message: '登入成功' })
+        return res.json({ success: true, message: '登入成功' });
 
     } catch (error) {
         return res.json({ success: false, message: '登入失敗，請填寫所有欄位' })
@@ -114,7 +114,7 @@ export const logout = async (req, res) => {
             sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', // 根據環境變量來設置並只在生產環境中啟用
         })
 
-        res.json({ success: true, message: "已登出" })
+        return res.json({ success: true, message: "已登出" });
 
     } catch (error) {
         return res.json({ success: false, message: '發生錯誤，請再操作一次' })
@@ -149,10 +149,10 @@ export const sendVerifyOtp = async (req, res) => {
         await user.save();
         await handleSendMail(user.email, user.name, subject, text);
 
-        res.json({ success: true, message: "已寄送OTP驗證碼" })
+        return res.json({ success: true, message: "已寄送OTP驗證碼" })
 
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        return res.json({ success: false, message: error.message });
     }
 }
 
@@ -162,26 +162,26 @@ export const verifyEamil = async (req, res) => {
     const { userId, otp } = req.body;
 
     if (!userId || !otp) {
-        res.json({ success: false, message: "發生錯誤，請確認用戶及驗證碼" });
+        return res.json({ success: false, message: "發生錯誤，請確認用戶及驗證碼" });
     };
 
     try {
 
         // 取得使用者資料
-        const user = userModel.findById(userId);
+        const user = await userModel.findById(userId);
 
         if (!user) {
-            res.json({ success: false, message: "該用戶不存在" });
+            return res.json({ success: false, message: "該用戶不存在" });
         };
 
         // 判斷用戶是否經過驗證
         if (user.verifyOtp === '' || user.verifyOtp !== otp) {
-            res.json({ success: false, message: "驗證失敗" });
+            return res.json({ success: false, message: "未驗證用戶" });
         };
 
         // 驗證碼期限
         if (user.verifyOtpExpireAt < Date.now()) {
-            res.json({ success: false, message: "驗證碼已過期" });
+            return res.json({ success: false, message: "驗證碼已過期" });
         };
 
         // 通過以上判斷則執行以下邏輯
@@ -190,10 +190,10 @@ export const verifyEamil = async (req, res) => {
         user.verifyOtpExpireAt = 0;
 
         await user.save();
-        res.json({ success: true, message: "信箱驗證成功" });
+        return res.json({ success: true, message: "信箱驗證成功" });
 
 
     } catch (error) {
-        res.json({ success: false, message: error.message });
+        return res.json({ success: false, message: error.message });
     }
 }
