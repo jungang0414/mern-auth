@@ -68,7 +68,7 @@ export const login = async (req, res) => {
 
     try {
 
-        // 使用email找出是否有此用戶，返回布林值
+        // 使用 email 來取得資料庫用戶資料
         const user = await userModel.findOne({ email });
 
         if (!user) {
@@ -126,9 +126,11 @@ export const sendVerifyOtp = async (req, res) => {
 
     // 取得要寄送信件的使用者id
     const { userId } = req.body;
-    const user = await userModel.findById(userId); // 這裡取得的是對應id的資料庫中用戶資料
 
     try {
+
+        // 這裡取得的是對應id的資料庫中用戶資料
+        const user = await userModel.findById(userId);
 
         // 確認用戶是否已驗證 使用者註冊時 驗證狀態預設是 false
         if (user.isAccountVerified) {
@@ -191,6 +193,97 @@ export const verifyEamil = async (req, res) => {
 
         await user.save();
         return res.json({ success: true, message: "信箱驗證成功" });
+
+
+    } catch (error) {
+        return res.json({ success: false, message: error.message });
+    }
+}
+
+// 確認使用者是否已驗證
+export const isAuthenticated = async (req, res) => {
+    try {
+        return res.json({ succsee: true, message: "已驗證" });
+    } catch (error) {
+        return res.json({ success: false, message: error.message });
+    }
+}
+
+// 寄送 變更密碼 OTP 驗證碼
+export const sendResetOtp = async (req, res) => {
+
+    const { email } = req.body;
+
+    if (!email) {
+        return res.json({ success: false, message: "缺少 email" });
+    }
+
+    try {
+
+        // 取得資料庫用戶資料
+        const user = await userModel.findOne({ email })
+
+        if (!user) {
+            return res.json({ success: false, message: "無此用戶" });
+        }
+
+        // 生成隨機 6碼 OTP 用來驗證
+        const otp = Math.floor(100000 + Math.random() * 900000)
+
+        user.resetOtp = otp; // 將隨機生成的 OTP 更新至用戶資料
+        user.resetOtpExpireAt = Date.now() + 15 * 60 * 1000; // 15m
+
+        // 驗證信件的內容預設
+        const subject = 'Password Reset OTP';
+        const text = `You can use this otp to Reset Password. Your reset otp is ${otp}`;
+
+        await user.save();
+        await handleSendMail(user.email, user.name, subject, text);
+
+        return res.json({ success: true, message: "已寄送OTP驗證碼" })
+
+
+    } catch (error) {
+        return res.json({ success: false, message: error.message });
+    }
+}
+
+// 重置密碼
+export const resetPassword = async (req, res) => {
+
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+        return res.json({ success: false, message: "請填寫 email, otp, newPassword" });
+    }
+
+    try {
+
+        // 取得資料庫使用者資料
+        const user = await userModel.findOne({ email });
+        if (!user) {
+            return res.json({ success: false, message: "用戶不存在" });
+        }
+
+        // 確認 OTP
+        if (user.resetOtp === '' || user.resetOtp !== otp) {
+            return res.json({ success: false, message: "驗證碼輸入錯誤，請再試一次" });
+        }
+
+        // 驗證碼期限
+        if (user.resetOtpExpireAt < Date.now()) {
+            return res.json({ success: false, message: "驗證碼已過期" });
+        };
+
+        // 密碼加密
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        user.password = hashedPassword;
+        user.resetOtp = ''
+        user.resetOtpExpireAt = 0;
+
+        await user.save();
+        return res.json({ success: true, message: "密碼修改成功" });
 
 
     } catch (error) {
