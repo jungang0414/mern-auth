@@ -120,3 +120,80 @@ export const logout = async (req, res) => {
         return res.json({ success: false, message: '發生錯誤，請再操作一次' })
     }
 }
+
+// 針對使用者 寄送 OTP 驗證碼
+export const sendVerifyOtp = async (req, res) => {
+
+    // 取得要寄送信件的使用者id
+    const { userId } = req.body;
+    const user = await userModel.findById(userId); // 這裡取得的是對應id的資料庫中用戶資料
+
+    try {
+
+        // 確認用戶是否已驗證 使用者註冊時 驗證狀態預設是 false
+        if (user.isAccountVerified) {
+            return res.json({ success: false, message: '該用戶已通過驗證' });
+        }
+
+        // 生成隨機 6碼 OTP
+        const otp = Math.floor(100000 + Math.random() * 900000)
+
+        // 以下為未驗證用戶的處理邏輯
+        user.verifyOtp = otp; // 將隨機生成的 OTP 更新至用戶資料
+        user.verifyOtpExpireAt = Date.now() + 24 * 60 * 60 * 1000; // 1d
+
+        // 驗證信件的內容預設
+        const subject = 'Verifiaction OTP';
+        const text = `Your Verifiaction OTP is ${otp}`;
+
+        await user.save();
+        await handleSendMail(user.email, user.name, subject, text);
+
+        res.json({ success: true, message: "已寄送OTP驗證碼" })
+
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+}
+
+// 輸入信件取得的 OTP 驗證碼 驗證用戶
+export const verifyEamil = async (req, res) => {
+
+    const { userId, otp } = req.body;
+
+    if (!userId || !otp) {
+        res.json({ success: false, message: "發生錯誤，請確認用戶及驗證碼" });
+    };
+
+    try {
+
+        // 取得使用者資料
+        const user = userModel.findById(userId);
+
+        if (!user) {
+            res.json({ success: false, message: "該用戶不存在" });
+        };
+
+        // 判斷用戶是否經過驗證
+        if (user.verifyOtp === '' || user.verifyOtp !== otp) {
+            res.json({ success: false, message: "驗證失敗" });
+        };
+
+        // 驗證碼期限
+        if (user.verifyOtpExpireAt < Date.now()) {
+            res.json({ success: false, message: "驗證碼已過期" });
+        };
+
+        // 通過以上判斷則執行以下邏輯
+        user.isAccountVerified = true;
+        user.verifyOtp = '';
+        user.verifyOtpExpireAt = 0;
+
+        await user.save();
+        res.json({ success: true, message: "信箱驗證成功" });
+
+
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
+}
