@@ -9,7 +9,7 @@ const CLIENT_SECRET = process.env.CLIENT_SECRET;
 const REFRESH_TOKEN = process.env.REFRESH_TOKEN;
 
 // 創建 OAuth2 client
-const handleSendMail = async (email, name, subject, text) => {
+const handleSendMail = async (email, name, subject, html) => {
     return await new Promise((resolve, reject) => {
 
         const oauth2Client = new OAuth2(
@@ -49,7 +49,7 @@ const handleSendMail = async (email, name, subject, text) => {
                     form: process.env.SENDER_EMAIL,
                     to: email,
                     subject: subject,
-                    text: text
+                    html: html
                 };
 
                 transporter.sendMail(mailOptions, (error, info) => {
