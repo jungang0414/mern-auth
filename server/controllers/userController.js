@@ -11,7 +11,10 @@ export const getUserData = async (req, res) => {
 
         // 檢查使用者
         if (!user) {
-            return res.json({ success: false, message: "User not found" });
+            return res.json({
+                success: false,
+                message: "查無此用戶"
+            });
         }
 
         res.json({
@@ -23,6 +26,10 @@ export const getUserData = async (req, res) => {
         })
 
     } catch (error) {
-        return res.json({ success: false, message: error.message });
+        console.error("取得用戶資料失敗:", error);
+        return res.json({
+            success: false,
+            message: error.message
+        });
     }
 }
